@@ -14,9 +14,9 @@ function love.update(dt)
 end
 
 function love.draw()
-    if love.mouse.isDown(1) then
+    -- if love.mouse.isDown(1) then
         bolt:draw()
-    end
+    -- end
 end
 
 
