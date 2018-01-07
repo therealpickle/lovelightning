@@ -2,7 +2,7 @@ LoveLightning = require "lovelightning"
 
 
 function love.load()
-    bolt = LoveLightning:new()
+    bolt = LoveLightning:new(255,255,255)
     bolt:setSource(love.graphics.getWidth()/2,love.graphics.getHeight()/2)
 end
 
