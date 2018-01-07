@@ -2,10 +2,17 @@ require "requires"
 
 LoveLighting = class("LoveLighting")
 
+--[[
+A point is a table in the form of {['x']=x,['y']=y}
+
+A line segment is a table with two points in the form of {['start']=startpoint,
+    ['end']=endpoint}
+
+--]]
 
 function LoveLighting:initialize(r,g,b)
     self.iterations = 6
-    self.jitter = 0.25
+    self.jitter_factor = 0.25
     self.color = {['r']=r,['g']=g,['b']=b}
 end
 
@@ -17,17 +24,16 @@ function LoveLighting:setSource(x,y)
     self.source = {['x']=x, ['y']=y}
 end
 
-
-function LoveLighting:update(dt)
-    -- generate main trunk
-    self.trunk_segments = {{['start']=self.source, ['end']=self.target}}
-    for _ = 1, self.iterations, 1
-    do
+-- takes a list of line segments and for each iteration breaks each segment
+-- in half and moves the midpoint a distance according to the jitter factor
+-- and creates 2 new lines segments for each segment
+local function add_jitter(segments, iterations, jitter_factor)
+    for _ = 1, iterations, 1 do
         local newsegs = {}
-        for i = 1, #self.trunk_segments, 1
-        do
-            local sp = self.trunk_segments[i]['start'] -- start point
-            local ep = self.trunk_segments[i]['end'] -- end point
+        for i, segment in ipairs(segments) do
+            
+            local sp = segment['start'] -- start point
+            local ep = segment['end'] -- end point
 
             -- the midpoint between the two points
             local mp = {
@@ -40,7 +46,7 @@ function LoveLighting:update(dt)
             
             -- pick a random offset for the midpoint based on the distance
             -- between the 2 points
-            local offset = math.random()*self.jitter*dist*2-self.jitter*dist
+            local offset = math.random()*jitter_factor*dist*2-jitter_factor*dist
 
             -- find the angle of the line (from horizontal)
             local hangle = math.tan((sp['x']-ep['x'])/(sp['y']-ep['y']))
@@ -56,39 +62,52 @@ function LoveLighting:update(dt)
             table.insert(newsegs,{['start']=sp, ['end']=np})
             table.insert(newsegs,{['start']=np, ['end']=ep})           
         end
-        self.trunk_segments = newsegs
-    end    
+        segments = newsegs
+    end
+    return segments
 end
 
-local function draw_segments(segments, color)
-    local current_blend_mode = love.graphics.getBlendMode()
-    love.graphics.setBlendMode('alpha')
+local function create_forks(segments, num_forks)
     
-    for i = 1, #segments, 1
-    do
-        local sp = segments[i]['start']
-        local ep = segments[i]['end']
+end
 
+function LoveLighting:update(dt)
+    -- generate main trunk 
+    self.trunk_segments = add_jitter({{['start']=self.source, ['end']=self.target}}, 
+        self.iterations, self.jitter_factor)
+end
 
-        love.graphics.setLineWidth(5)
-        love.graphics.setColor(color['r'], color['g'], color['b'], 64)
-        love.graphics.line(sp['x'], sp['y'], ep['x'], ep['y'])
-        love.graphics.setLineWidth(3)
-        love.graphics.setColor(color['r'], color['g'], color['b'], 128)
-        love.graphics.line(sp['x'], sp['y'], ep['x'], ep['y'])
-        love.graphics.setLineWidth(1)
-        love.graphics.setColor(color['r'], color['g'], color['b'], 255)
-        love.graphics.line(sp['x'], sp['y'], ep['x'], ep['y'])
-        -- love.graphics.circle('fill', sp['x'], sp['y'],2)
-        -- love.graphics.circle('fill', ep['x'], ep['y'],2)
-
+local function get_points_from_segments( segments )
+    local points = {}
+    for i, segment in ipairs(segments) do
+        table.insert(points, segment['start']['x'])
+        table.insert(points, segment['start']['y'])
     end
-    love.graphics.setBlendMode(current_blend_mode)
+    table.insert(points, segments[#segments]['end']['x'])
+    table.insert(points, segments[#segments]['end']['y'])
+
+    return points
+end
+
+local function draw_segments(segments, color, max_alpha, max_width)
+    local points = get_points_from_segments(segments)
+    love.graphics.line(unpack(points))
+
+    love.graphics.setLineJoin('miter')
+    love.graphics.setLineWidth(max_width)
+    love.graphics.setColor(color['r'], color['g'], color['b'], max_alpha/4)
+    love.graphics.line(unpack(points))
+    love.graphics.setLineWidth(max_width/2)
+    love.graphics.setColor(color['r'], color['g'], color['b'], max_alpha/2)
+    love.graphics.line(unpack(points))
+    love.graphics.setLineWidth(max_width/5)
+    love.graphics.setColor(color['r'], color['g'], color['b'], max_alpha)
+    love.graphics.line(unpack(points))
 end
 
 function LoveLighting:draw()
     if self.trunk_segments then
-        draw_segments(self.trunk_segments, self.color)
+        draw_segments(self.trunk_segments, self.color, 255, 10)
     end
 end
 
