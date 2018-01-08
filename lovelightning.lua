@@ -1,4 +1,7 @@
-require "requires"
+math = require 'math'
+class = require 'lib/middleclass/middleclass'
+vector = require "lib/hump.vector"
+
 
 LoveLighting = class("LoveLighting")
 
@@ -55,26 +58,59 @@ local function add_jitter(segments, iterations, jitter_factor)
             hangle = hangle + math.pi/2
 
             local np = { -- new midpoint
-                ['x'] = mp['x']+offset*math.sin(hangle),
-                ['y'] = mp['y']+offset*math.cos(hangle)
+                ['x'] = mp['x']+offset*math.cos(hangle),
+                ['y'] = mp['y']+offset*math.sin(hangle)
             }
 
             table.insert(newsegs,{['start']=sp, ['end']=np})
-            table.insert(newsegs,{['start']=np, ['end']=ep})           
+            table.insert(newsegs,{['start']=np, ['end']=ep})
+
+
         end
         segments = newsegs
     end
     return segments
 end
 
-local function create_forks(segments, num_forks)
-    
+function LoveLighting:_createForks(num_forks)
+    self.forks = {}
+
+    for _ = 1, num_forks, 1 do
+        
+        local forigin = self.trunk_segments[math.random(1,
+            #self.trunk_segments)]
+
+        -- the distance between source and the target
+        local dist = math.sqrt((self.source['x']-self.target['x'])^2 + 
+            (self.source['y']-self.target['y'])^2)
+
+        -- pick a random fork length up to the dist
+        local flen = math.random()*dist*0.5
+
+        -- create vectors for the start and endpoints and segment
+        local vsp = vector(forigin['start']['x'], forigin['start']['y'])
+        local vep = vector(forigin['end']['x'], forigin['end']['y'])
+
+        -- create vector for the fork and add to the endpoint
+        local vfork = flen*(vep-vsp):normalized() + vep
+
+        local fork_target = {['x']=vfork.x, ['y']=vfork.y}
+
+        -- create a new line segment from the fork origin end point to the targ
+        fork_segs = {{['start']=forigin['end'],['end']=fork_target}}
+
+        -- add jitter to the line
+        fork_segs = add_jitter(fork_segs, self.iterations, self.jitter_factor)    
+
+        table.insert(self.forks, fork_segs) 
+    end
 end
 
 function LoveLighting:update(dt)
     -- generate main trunk 
     self.trunk_segments = add_jitter({{['start']=self.source, ['end']=self.target}}, 
         self.iterations, self.jitter_factor)
+    self:_createForks(math.random(3,8))
 end
 
 local function get_points_from_segments( segments )
@@ -89,25 +125,25 @@ local function get_points_from_segments( segments )
     return points
 end
 
-local function draw_segments(segments, color, max_alpha, max_width)
+local function draw_segments(segments, color, alpha, width)
     local points = get_points_from_segments(segments)
     love.graphics.line(unpack(points))
 
-    love.graphics.setLineJoin('miter')
-    love.graphics.setLineWidth(max_width)
-    love.graphics.setColor(color['r'], color['g'], color['b'], max_alpha/4)
-    love.graphics.line(unpack(points))
-    love.graphics.setLineWidth(max_width/2)
-    love.graphics.setColor(color['r'], color['g'], color['b'], max_alpha/2)
-    love.graphics.line(unpack(points))
-    love.graphics.setLineWidth(max_width/5)
-    love.graphics.setColor(color['r'], color['g'], color['b'], max_alpha)
+    --love.graphics.setLineJoin('miter')
+    love.graphics.setLineWidth(width)
+    love.graphics.setColor(color['r'], color['g'], color['b'], alpha)
     love.graphics.line(unpack(points))
 end
 
 function LoveLighting:draw()
     if self.trunk_segments then
-        draw_segments(self.trunk_segments, self.color, 255, 10)
+        draw_segments(self.trunk_segments, self.color, 255, 1)
+    end
+
+    if self.forks then
+        for i,fork in ipairs(self.forks) do
+            draw_segments(fork, self.color, 255, 1)
+        end
     end
 end
 
