@@ -127,9 +127,17 @@ end
 
 local function draw_segments(segments, color, alpha, width)
     local points = get_points_from_segments(segments)
+    
+    love.graphics.setLineJoin('miter')
+    
+    love.graphics.setLineWidth(width+7)
+    love.graphics.setColor(color['r'], color['g'], color['b'], alpha-192)
+    love.graphics.line(unpack(points))
+    
+    love.graphics.setLineWidth(width+3)
+    love.graphics.setColor(color['r'], color['g'], color['b'], alpha-128)
     love.graphics.line(unpack(points))
 
-    --love.graphics.setLineJoin('miter')
     love.graphics.setLineWidth(width)
     love.graphics.setColor(color['r'], color['g'], color['b'], alpha)
     love.graphics.line(unpack(points))
@@ -137,7 +145,7 @@ end
 
 function LoveLighting:draw()
     if self.trunk_segments then
-        draw_segments(self.trunk_segments, self.color, 255, 1)
+        draw_segments(self.trunk_segments, self.color, 255, 3)
     end
 
     if self.forks then
