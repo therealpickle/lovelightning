@@ -52,7 +52,7 @@ local function add_jitter(segments, iterations, jitter_factor)
             local offset = math.random()*jitter_factor*dist*2-jitter_factor*dist
 
             -- find the angle of the line (from horizontal)
-            local hangle = math.tan((sp['x']-ep['x'])/(sp['y']-ep['y']))
+            local hangle = math.tan((sp['y']-ep['y'])/(sp['x']-ep['x']))
             
             -- Add 90 deg for perpendicular
             hangle = hangle + math.pi/2
