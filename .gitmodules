@@ -1,3 +1,6 @@
 [submodule "lib/middleclass"]
 	path = lib/middleclass
 	url = https://github.com/kikito/middleclass
+[submodule "lib/hump"]
+	path = lib/hump
+	url = https://github.com/vrld/hump
