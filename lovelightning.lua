@@ -1,7 +1,7 @@
 math = require 'math'
 class = require 'lib/middleclass/middleclass'
-vector = require "lib/hump.vector"
-
+vector = require 'lib/hump.vector'
+fx = require 'fx'
 
 LoveLighting = class("LoveLighting")
 
@@ -13,9 +13,11 @@ A line segment is a table with two points in the form of {['start']=startpoint,
 
 --]]
 
+
 function LoveLighting:initialize(r,g,b)
     self.iterations = 6
     self.jitter_factor = 0.25
+    self.fork_chance = 0.25
     self.color = {['r']=r,['g']=g,['b']=b}
 end
 
@@ -128,24 +130,55 @@ end
 local function draw_segments(segments, color, alpha, width)
     local points = get_points_from_segments(segments)
     
+    love.graphics.setShader(LoveLighting.shader)
+
     love.graphics.setLineJoin('miter')
     
-    love.graphics.setLineWidth(width+7)
-    love.graphics.setColor(color['r'], color['g'], color['b'], alpha-192)
-    love.graphics.line(unpack(points))
+    -- love.graphics.setLineWidth(width+7)
+    -- love.graphics.setColor(color['r'], color['g'], color['b'], alpha-192)
+    -- love.graphics.line(unpack(points))
     
-    love.graphics.setLineWidth(width+3)
-    love.graphics.setColor(color['r'], color['g'], color['b'], alpha-128)
-    love.graphics.line(unpack(points))
+    -- love.graphics.setLineWidth(width+3)
+    -- love.graphics.setColor(color['r'], color['g'], color['b'], alpha-128)
+    -- love.graphics.line(unpack(points))
 
     love.graphics.setLineWidth(width)
     love.graphics.setColor(color['r'], color['g'], color['b'], alpha)
     love.graphics.line(unpack(points))
+
+    love.graphics.setShader()
 end
 
 function LoveLighting:draw()
+    local restore_mode = love.graphics.getBlendMode()
+    local restore_canvas = love.graphics.getCanvas()
+
+    local canvas = love.graphics.newCanvas()
+    love.graphics.setCanvas(canvas)
+
     if self.trunk_segments then
-        draw_segments(self.trunk_segments, self.color, 255, 3)
+        draw_segments(self.trunk_segments, self.color, 255, 5)
+    end
+
+    if self.forks then
+        for i,fork in ipairs(self.forks) do
+            draw_segments(fork, self.color, 255, 5)
+        end
+    end
+
+    
+
+    
+    canvas = fx.blur(canvas)
+
+    --love.graphics.setBlendMode("alpha", "premultiplied"). 
+    love.graphics.setCanvas(restore_canvas)
+    love.graphics.draw(canvas,0,0)
+
+    love.graphics.setBlendMode(restore_mode)
+
+    if self.trunk_segments then
+        draw_segments(self.trunk_segments, self.color, 255, 1)
     end
 
     if self.forks then
@@ -153,6 +186,7 @@ function LoveLighting:draw()
             draw_segments(fork, self.color, 255, 1)
         end
     end
+
 end
 
 return LoveLighting
