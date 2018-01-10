@@ -3,78 +3,100 @@ class = require 'lib/middleclass/middleclass'
 vector = require 'lib/hump.vector'
 fx = require 'fx'
 
-LoveLighting = class("LoveLighting")
 
---[[
-A point is a table in the form of {['x']=x,['y']=y}
+-------------------------------------------------------------------------------
+local LightningVertex = class('LightningVertex')
 
-A line segment is a table with two points in the form of {['start']=startpoint,
-    ['end']=endpoint}
+function LightningVertex:initialize(vec)
+    self.vec = vec
+    self.is_fork_root = false
+    self.fork = nil
+end
 
---]]
+function LightningVertex:createFork(fork_vec)
+    self.fork = {
+        LightningVertex:new(self.vec),
+        LightningVertex:new(self.vec+fork_vec)
+    }
+    self.is_fork_root = true
+end
 
+-------------------------------------------------------------------------------
+LoveLightning = class("LoveLightning")
 
-function LoveLighting:initialize(r,g,b)
-    self.iterations = 6
-    self.jitter_factor = 0.25
+function LoveLightning:initialize(r,g,b)
+    self.iterations = 8
+    self.jitter_factor = 0.5
     self.fork_chance = 0.25
+    self.max_fork_angle = math.pi/4
     self.color = {['r']=r,['g']=g,['b']=b}
 end
 
-function LoveLighting:setTarget(x,y)
-    self.target = {['x']=x, ['y']=y}
+function LoveLightning:setTarget(x,y)
+    self.target = vector(x,y)
 end
 
-function LoveLighting:setSource(x,y)
-    self.source = {['x']=x, ['y']=y}
+function LoveLightning:setSource(x,y)
+    self.source = vector(x,y)
 end
 
--- takes a list of line segments and for each iteration breaks each segment
--- in half and moves the midpoint a distance according to the jitter factor
--- and creates 2 new lines segments for each segment
-local function add_jitter(segments, iterations, jitter_factor)
-    for _ = 1, iterations, 1 do
-        local newsegs = {}
-        for i, segment in ipairs(segments) do
-            
-            local sp = segment['start'] -- start point
-            local ep = segment['end'] -- end point
+function LoveLightning:_add_jitter(vertices, max_offset)
+    local newpath = {}
 
-            -- the midpoint between the two points
-            local mp = {
-                ['x']=(sp['x']+ep['x'])/2,
-                ['y']=(sp['y']+ep['y'])/2
-            }
+    for j = 1, #vertices-1, 1 do
+        
+        local vsp = vertices[j].vec      -- start point
+        local vep = vertices[j+1].vec    -- end point
+        local vmp = (vep+vsp)/2             -- mid point
+        local vseg = vep-vsp
+        local vnorm = vseg:perpendicular():normalized()
+        
+        local voffset = (math.random()*2-1)*max_offset*vnorm
+    
+        table.insert(newpath, vertices[j])
+        
+        local lvmp = LightningVertex(vmp+voffset)
 
-            -- the distance between the two points
-            local dist = math.sqrt((sp['x']-ep['x'])^2 + (sp['y']-ep['y'])^2)
-            
-            -- pick a random offset for the midpoint based on the distance
-            -- between the 2 points
-            local offset = math.random()*jitter_factor*dist*2-jitter_factor*dist
-
-            -- find the angle of the line (from horizontal)
-            local hangle = math.tan((sp['y']-ep['y'])/(sp['x']-ep['x']))
-            
-            -- Add 90 deg for perpendicular
-            hangle = hangle + math.pi/2
-
-            local np = { -- new midpoint
-                ['x'] = mp['x']+offset*math.cos(hangle),
-                ['y'] = mp['y']+offset*math.sin(hangle)
-            }
-
-            table.insert(newsegs,{['start']=sp, ['end']=np})
-            table.insert(newsegs,{['start']=np, ['end']=ep})
-
-
+        -- chance to create a fork from the midpoint
+        if math.random() < self.fork_chance then 
+            lvmp:createFork((vep-lvmp.vec):rotated(
+                math.random()*2*self.max_fork_angle-self.max_fork_angle))
         end
-        segments = newsegs
+
+        table.insert(newpath, lvmp)
+
+        -- if the start point is a fork, then add jitter to the fork
+        if vertices[j].is_fork_root == true then
+            vertices[j].fork = self:_add_jitter(vertices[j].fork, max_offset)
+        end
+
     end
-    return segments
+    table.insert(newpath, vertices[#vertices])
+    
+    return newpath
 end
 
-function LoveLighting:_createForks(num_forks)
+function LoveLightning:create(source_x, source_y, target_x, target_y)
+
+    local vsource = vector(source_x, source_y)
+    local vtarget = vector(target_x, target_y)
+    
+    self.vertices = {
+        LightningVertex:new(vsource),
+        LightningVertex:new(vtarget)
+    }
+
+    local max_offset = (vtarget-vsource):len()*0.5*self.jitter_factor
+
+    for i = 1, self.iterations, 1 do
+        
+        self.vertices = self:_add_jitter(self.vertices, max_offset)
+
+        max_offset = max_offset/2
+    end
+end
+
+function LoveLightning:_createForks(num_forks)
     self.forks = {}
 
     for _ = 1, num_forks, 1 do
@@ -108,85 +130,59 @@ function LoveLighting:_createForks(num_forks)
     end
 end
 
-function LoveLighting:update(dt)
-    -- generate main trunk 
-    self.trunk_segments = add_jitter({{['start']=self.source, ['end']=self.target}}, 
-        self.iterations, self.jitter_factor)
-    self:_createForks(math.random(3,8))
+function LoveLightning:update(dt)
+
 end
 
-local function get_points_from_segments( segments )
+local function get_points_from_vertex_list( vlist )
     local points = {}
-    for i, segment in ipairs(segments) do
-        table.insert(points, segment['start']['x'])
-        table.insert(points, segment['start']['y'])
+    for _, v in ipairs(vlist) do
+        table.insert(points, v.vec.x)
+        table.insert(points, v.vec.y)
     end
-    table.insert(points, segments[#segments]['end']['x'])
-    table.insert(points, segments[#segments]['end']['y'])
-
     return points
 end
 
-local function draw_segments(segments, color, alpha, width)
-    local points = get_points_from_segments(segments)
+local function draw_path(vertex_list, color, alpha, width)
+    local points = get_points_from_vertex_list(vertex_list)
     
-    love.graphics.setShader(LoveLighting.shader)
-
     love.graphics.setLineJoin('miter')
     
-    -- love.graphics.setLineWidth(width+7)
-    -- love.graphics.setColor(color['r'], color['g'], color['b'], alpha-192)
-    -- love.graphics.line(unpack(points))
-    
-    -- love.graphics.setLineWidth(width+3)
-    -- love.graphics.setColor(color['r'], color['g'], color['b'], alpha-128)
-    -- love.graphics.line(unpack(points))
-
     love.graphics.setLineWidth(width)
     love.graphics.setColor(color['r'], color['g'], color['b'], alpha)
     love.graphics.line(unpack(points))
 
-    love.graphics.setShader()
-end
-
-function LoveLighting:draw()
-    local restore_mode = love.graphics.getBlendMode()
-    local restore_canvas = love.graphics.getCanvas()
-
-    local canvas = love.graphics.newCanvas()
-    love.graphics.setCanvas(canvas)
-
-    if self.trunk_segments then
-        draw_segments(self.trunk_segments, self.color, 255, 5)
-    end
-
-    if self.forks then
-        for i,fork in ipairs(self.forks) do
-            draw_segments(fork, self.color, 255, 5)
+    for _, v in ipairs(vertex_list) do
+        if v.is_fork_root then
+            draw_path(v.fork, color, alpha*0.5, width-1)
         end
     end
-
-    
-
-    
-    canvas = fx.blur(canvas)
-
-    --love.graphics.setBlendMode("alpha", "premultiplied"). 
-    love.graphics.setCanvas(restore_canvas)
-    love.graphics.draw(canvas,0,0)
-
-    love.graphics.setBlendMode(restore_mode)
-
-    if self.trunk_segments then
-        draw_segments(self.trunk_segments, self.color, 255, 1)
-    end
-
-    if self.forks then
-        for i,fork in ipairs(self.forks) do
-            draw_segments(fork, self.color, 255, 1)
-        end
-    end
-
 end
 
-return LoveLighting
+function LoveLightning:draw()
+    if self.vertices then
+
+        local restore_mode = love.graphics.getBlendMode()
+        local restore_canvas = love.graphics.getCanvas()
+    
+        local canvas = love.graphics.newCanvas()
+        love.graphics.setCanvas(canvas)
+
+        draw_path(self.vertices, self.color, 32, 17)
+        draw_path(self.vertices, self.color, 64, 7)
+        draw_path(self.vertices, self.color, 128, 5)
+
+        canvas = fx.blur(canvas)
+
+        love.graphics.setCanvas(restore_canvas)
+
+        love.graphics.setBlendMode("alpha", "premultiplied")
+        love.graphics.draw(canvas,0,0)
+        love.graphics.setBlendMode(restore_mode)
+
+        draw_path(self.vertices, self.color, 255, 2)
+
+    end
+end
+
+return LoveLightning

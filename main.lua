@@ -9,7 +9,7 @@ end
 function love.update(dt)
     bolt:setTarget(love.mouse.getPosition())
     if love.mouse.isDown(1) then
-        bolt:update(dt)
+        bolt:create(bolt.source.x, bolt.source.y, bolt.target.x, bolt.target.y)
     end
 end
 
