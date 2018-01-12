@@ -1,8 +1,10 @@
-math = require 'math'
-class = require 'lib/middleclass/middleclass'
-vector = require 'lib/hump.vector'
-fx = require 'fx'
+local folderOfThisFile = (...):match("(.-)[^%/%.]+$")
 
+math = require 'math'
+
+class = require(folderOfThisFile .. 'lib/middleclass/middleclass')
+vector = require(folderOfThisFile .. 'lib/hump.vector')
+fx = require(folderOfThisFile .. 'fx')
 
 -------------------------------------------------------------------------------
 local LightningVertex = class('LightningVertex')
