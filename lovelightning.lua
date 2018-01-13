@@ -153,6 +153,7 @@ local function draw_path(vertex_list, color, alpha, width)
     love.graphics.setLineWidth(width)
     love.graphics.setColor(color['r'], color['g'], color['b'], alpha)
     love.graphics.line(unpack(points))
+    love.graphics.setColor(255,255,255)
 
     for _, v in ipairs(vertex_list) do
         if v.is_fork_root then
