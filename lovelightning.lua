@@ -75,7 +75,7 @@ function LoveLightning:_add_jitter(vertices, max_offset, level)
                 math.random()*2*self.max_fork_angle-self.max_fork_angle)
 
             if self.fork_targets and #self.fork_targets>0 then
-                for i, t in self.fork_targets:
+                for i, t in pairs(self.fork_targets) do
                     if t.x ~= nill and t.y ~= nil then
                         local vt = vector(t.x, t.y)
                         
