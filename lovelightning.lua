@@ -35,7 +35,7 @@ function LoveLightning:initialize(r,g,b,power)
 end
 
 function LoveLightning:setPrimaryTarget(targ)
-    if targ.x ~= nill and targ.y ~= nil then
+    if targ.x ~= nil and targ.y ~= nil then
         self.target = vector(targ.x, targ.y)
     end
 end
@@ -47,6 +47,12 @@ function LoveLightning:setSource(source)
 end
 
 function LoveLightning:setForkTargets(targets)
+    local targs = {}
+    for _, t in ipairs(targets) do
+        if t.x and t.y then
+            table.insert(targs,t)
+        end
+    end
     self.fork_targets = targets
 end
 
@@ -76,13 +82,20 @@ function LoveLightning:_add_jitter(vertices, max_offset, level)
 
             if self.fork_targets and #self.fork_targets>0 then
                 for i, t in pairs(self.fork_targets) do
-                    if t.x ~= nill and t.y ~= nil then
-                        local vt = vector(t.x, t.y)
+                    if t.x ~= nil and t.y ~= nil then
                         
-                        if math.abs(vfork.angleTo(vt-vmp)) < self.max_fork_angle and
-                                vmp.dist(vt) < self.distance/level then
+                        local vt = vector(t.x, t.y)
+                        print(vt,vmp,vfork)
+                        
+                        if math.abs(vfork.angleTo(vt-vmp)) < self.max_fork_angle then --and 
+                        --         vmp.dist(vt) < self.distance/level then
 
                             vfork = vt
+                            if self.fork_hit_handler then
+                                print("calling fork hit handler")
+                                self.fork_hit_handler(t,level)
+                            end
+                            break
                         end
                     end
                 end
