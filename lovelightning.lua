@@ -79,6 +79,11 @@ function LoveLightning:_add_jitter(vertices, max_offset, level)
                     if t.x ~= nill and t.y ~= nil then
                         local vt = vector(t.x, t.y)
                         
+                        if math.abs(vfork.angleTo(vt-vmp)) < self.max_fork_angle and
+                                vmp.dist(vt) < self.distance/level then
+
+                            vfork = vt
+                        end
                     end
                 end
             end
@@ -111,9 +116,9 @@ function LoveLightning:create( fork_hit_handler )
         LightningVertex:new(vtarget)
     }
 
-    local distance = (vtarget-vsource):len()
-    local max_jitter = distance*0.5*self.jitter_factor
-    local iterations = math.max(3,math.floor(distance/50)) 
+    self.distance = (vtarget-vsource):len()
+    local max_jitter = self.distance*0.5*self.jitter_factor
+    local iterations = math.max(4,math.floor(self.distance/50)) 
 
     for i = 1, iterations, 1 do
         
