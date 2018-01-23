@@ -8,8 +8,9 @@ local controls = baton.new({
         primary = {'mouse:1'},
         secondary = {'mouse:2'},
         fire = {'key:space'},
-        increase = {'key:plus'},
-        decrease = {'key:minus'}
+        generate = {'key:lshift'},
+        increase = {'key:kp+','key:+'},
+        decrease = {'key:kp-','key:-'},
     }
 })
 
@@ -49,7 +50,7 @@ function love.update(dt)
         n_targs = math.max(0, n_targs - 1)
     end
 
-    if controls:pressed('fire') then
+    if controls:pressed('generate') then
         sec_targs = {}
         for _ = 1 , n_targs do
             print(_)
@@ -57,6 +58,9 @@ function love.update(dt)
             local ty = MARGIN+math.random()*(love.graphics.getHeight()-MARGIN*2)
             table.insert(sec_targs,Target:new({x=tx,y=ty}))
         end
+    end        
+
+    if controls:pressed('fire') then
         bolt:create()
     end
 end
