@@ -7,3 +7,6 @@
 [submodule "lib/baton"]
 	path = lib/baton
 	url = https://github.com/tesselode/baton.git
+[submodule "lib/cpml"]
+	path = lib/cpml
+	url = https://github.com/excessive/cpml.git
