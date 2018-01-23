@@ -4,3 +4,6 @@
 [submodule "lib/hump"]
 	path = lib/hump
 	url = https://github.com/vrld/hump
+[submodule "lib/baton"]
+	path = lib/baton
+	url = https://github.com/tesselode/baton.git
