@@ -11,6 +11,8 @@ local controls = baton.new({
         generate = {'key:lshift'},
         increase = {'key:kp+','key:+'},
         decrease = {'key:kp-','key:-'},
+        capture = {'key:v'},
+        toggle = {'key:b'},
     }
 })
 
@@ -41,15 +43,24 @@ end
 -------------------------------------------------------------------------------
 local MARGIN = 20
 
-local source_targ = Target:new({x=20, y=love.graphics.getHeight()/2})
+local source_targ = Target:new({x=MARGIN, y=love.graphics.getHeight()/2})
 source_targ:setColor(0,255,0)
 
-local prim_targ = Target:new({x=love.graphics.getWidth()-20, 
+local prim_targ = Target:new({x=love.graphics.getWidth()-MARGIN, 
     y=love.graphics.getHeight()/2})
 prim_targ:setColor(255,0,0)
 
 local sec_targs = {}
-local n_sec_targs = 3
+local n_sec_targs = 0
+
+local function generate_sec_targs()
+    sec_targs = {}
+    for _ = 1 , n_sec_targs do
+        local tx = MARGIN+math.random()*(love.graphics.getWidth()-MARGIN*2)
+        local ty = MARGIN+math.random()*(love.graphics.getHeight()-MARGIN*2)
+        table.insert(sec_targs,Target:new({x=tx,y=ty}))
+    end
+end
 
 function love.load()
     bolt = LoveLightning:new(255,255,255)
@@ -63,6 +74,23 @@ function love.load()
     end
 end
 
+function love.resize(w, h)
+
+    source_targ.x = MARGIN
+    source_targ.y = h/2
+
+    prim_targ.x = w-MARGIN
+    prim_targ.y = h/2
+
+    bolt:setSource(source_targ)
+    bolt:setPrimaryTarget(prim_targ)
+    bolt:setForkTargets()
+    bolt:clear()
+
+    generate_sec_targs()
+
+end
+
 local create_time = 0
 function love.update(dt)
     local st = love.timer.getTime()
@@ -71,6 +99,7 @@ function love.update(dt)
     
     controls:update()
     
+
     if controls:pressed('increase') then
         n_sec_targs = n_sec_targs + 1
         force_gen_sec_targs = true
@@ -80,12 +109,7 @@ function love.update(dt)
         force_gen_sec_targs = true
     end
     if controls:pressed('generate') or force_gen_sec_targs then
-        sec_targs = {}
-        for _ = 1 , n_sec_targs do
-            local tx = MARGIN+math.random()*(love.graphics.getWidth()-MARGIN*2)
-            local ty = MARGIN+math.random()*(love.graphics.getHeight()-MARGIN*2)
-            table.insert(sec_targs,Target:new({x=tx,y=ty}))
-        end
+        generate_sec_targs()
         force_gen_sec_targs = true
     end        
 
@@ -104,6 +128,10 @@ function love.update(dt)
         create_time = love.timer.getTime() - st
     end
 
+    if bolt.canvas and controls:pressed('capture') then
+        love.filesystem.remove('capture.png')
+        bolt.canvas:newImageData():encode('png', 'capture.png')
+    end
 end
 
 function love.draw()
@@ -116,6 +144,15 @@ function love.draw()
     end
     bolt:draw()
 
+    love.graphics.print(
+        "V: Capture Image || B: Toggle Border",
+        20, love.graphics.getHeight()-60)
+    love.graphics.print(
+        "plus: Increase Targets || minus: Decrease Targets",
+        20, love.graphics.getHeight()-40)
+    love.graphics.print(
+        "Space: Generate Lightning || L Shift: Generate Targets",
+        20, love.graphics.getHeight()-20)
     -- debug
     love.graphics.setFont(love.graphics.newFont())
     love.graphics.setColor(50, 200, 100, 200)

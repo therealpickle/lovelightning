@@ -58,13 +58,17 @@ function LoveLightning:setSource(source)
 end
 
 function LoveLightning:setForkTargets(targets)
-    local targs = {}
-    for _, t in ipairs(targets) do
-        if t.x and t.y then
-            table.insert(targs,t)
+    if targets then
+        local targs = {}
+        for _, t in ipairs(targets) do
+            if t.x and t.y then
+                table.insert(targs,t)
+            end
         end
+        self.fork_targets = targs
+    else
+        self.fork_targets = {}
     end
-    self.fork_targets = targs
 end
 
 -- vertices : a list of LightningVertex
@@ -113,7 +117,6 @@ function LoveLightning:_add_jitter(vertices, max_offset, level, targets, target_
                     vt = vector(t.x, t.y)
 
                     -- if the target is in the fork firing arc and is in range
-                    print(vfork:angleTo(vt), vmp:dist(vt))
                     if vfork:angleTo(vt) < self.max_fork_angle and 
                             vmp:dist(vt) < vfork:len()*2 then
 
@@ -183,6 +186,10 @@ function LoveLightning:generate( fork_hit_handler )
     self.canvas = nil
 end
 
+function LoveLightning:clear()
+    self.vertices = nil
+    self.canvas = nil
+end
 
 function LoveLightning:update(dt)
 
