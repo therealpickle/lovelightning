@@ -41,12 +41,13 @@ function Target:draw()
 end
 
 -------------------------------------------------------------------------------
-local MARGIN = 20
+local DEFAULT_MARGIN = 20
+local margin = DEFAULT_MARGIN
 
-local source_targ = Target:new({x=MARGIN, y=love.graphics.getHeight()/2})
+local source_targ = Target:new({x=margin, y=love.graphics.getHeight()/2})
 source_targ:setColor(0,255,0)
 
-local prim_targ = Target:new({x=love.graphics.getWidth()-MARGIN, 
+local prim_targ = Target:new({x=love.graphics.getWidth()-margin, 
     y=love.graphics.getHeight()/2})
 prim_targ:setColor(255,0,0)
 
@@ -56,8 +57,8 @@ local n_sec_targs = 0
 local function generate_sec_targs()
     sec_targs = {}
     for _ = 1 , n_sec_targs do
-        local tx = MARGIN+math.random()*(love.graphics.getWidth()-MARGIN*2)
-        local ty = MARGIN+math.random()*(love.graphics.getHeight()-MARGIN*2)
+        local tx = margin+math.random()*(love.graphics.getWidth()-margin*2)
+        local ty = margin+math.random()*(love.graphics.getHeight()-margin*2)
         table.insert(sec_targs,Target:new({x=tx,y=ty}))
     end
 end
@@ -68,18 +69,18 @@ function love.load()
     bolt:setPrimaryTarget(prim_targ)
 
     for _ = 1 , n_sec_targs do
-        local tx = MARGIN+math.random()*(love.graphics.getWidth()-MARGIN*2)
-        local ty = MARGIN+math.random()*(love.graphics.getHeight()-MARGIN*2)
+        local tx = margin+math.random()*(love.graphics.getWidth()-margin*2)
+        local ty = margin+math.random()*(love.graphics.getHeight()-margin*2)
         table.insert(sec_targs,Target:new({x=tx,y=ty}))
     end
 end
 
 function love.resize(w, h)
 
-    source_targ.x = MARGIN
+    source_targ.x = margin
     source_targ.y = h/2
 
-    prim_targ.x = w-MARGIN
+    prim_targ.x = w-margin
     prim_targ.y = h/2
 
     bolt:setSource(source_targ)
@@ -99,6 +100,14 @@ function love.update(dt)
     
     controls:update()
     
+    if controls:pressed('toggle') then
+        if margin == DEFAULT_MARGIN then 
+            margin = 0 
+        else 
+            margin = DEFAULT_MARGIN 
+        end 
+        love.resize(love.graphics.getWidth(),love.graphics.getHeight())
+    end
 
     if controls:pressed('increase') then
         n_sec_targs = n_sec_targs + 1
