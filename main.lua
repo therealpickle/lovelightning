@@ -16,14 +16,12 @@ local controls = baton.new({
 
 -------------------------------------------------------------------------------
 local Target = class("Target")
+local SEC_TARG_DEF_COLOR = {255,50,50,127}
 
 function Target:initialize(vector)
     self.x = vector.x
     self.y = vector.y
-    self.r = 255
-    self.g = 50
-    self.b = 50
-    self.a = 127
+    self.r, self.g, self.b, self.a = unpack(SEC_TARG_DEF_COLOR)
 end
 
 function Target:setColor(r, g, b, a)
@@ -92,8 +90,17 @@ function love.update(dt)
     end        
 
     if controls:pressed('fire') or force_gen_sec_targs then
+        -- reset the color on the targets
+        for _, t in ipairs(sec_targs) do
+            t:setColor(unpack(SEC_TARG_DEF_COLOR))
+        end
+
         local st = love.timer.getTime()
-        bolt:create(sec_targs)
+        bolt:setForkTargets(sec_targs)
+        bolt:generate(function(t,level)
+                t:setColor(255,255,25,255)
+            end)
+
         create_time = love.timer.getTime() - st
     end
 
