@@ -7,6 +7,9 @@ vector = require 'lib/hump.vector'
 cpml = require 'lib/cpml'
 fx = require 'fx'
 
+-- for benchmarking/debugging
+local vert_iter = 0
+
 -------------------------------------------------------------------------------
 local LightningVertex = class('LightningVertex')
 
@@ -86,14 +89,15 @@ end
 function LoveLightning:_add_jitter(vertices, max_offset, level, targets, target_hit_handler)
     local newpath = {} -- new list of vertices after jitter is added
 
-    print(#vertices, level)
+    -- print(#vertices, level)
 
     if level > self.max_fork_depth then
         return vertices
     end
 
     for j = 1, #vertices-1, 1 do
-        
+        vert_iter = vert_iter + 1
+
         local vsp = vertices[j].v   -- start point
         local vep = vertices[j+1].v -- end point
         local vmp = (vep+vsp)/2     -- mid point
@@ -189,6 +193,7 @@ function LoveLightning:generate( fork_hit_handler )
         self.min_iterations,math.floor(self.distance/50)))
 
     for i = 1, iterations, 1 do
+
         self.vertices = self:_add_jitter(self.vertices, max_jitter, 1, 
             self.fork_targets, fork_hit_handler)
 
@@ -196,6 +201,9 @@ function LoveLightning:generate( fork_hit_handler )
     end
 
     self.canvas = nil
+
+    print("Iter: "..iterations.." verts: "..vert_iter)
+    vert_iter = 0
 end
 
 function LoveLightning:clear()
