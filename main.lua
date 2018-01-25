@@ -175,6 +175,8 @@ function love.update(dt)
         create_time = love.timer.getTime() - st
     end
 
+    bolt:update(dt)
+
     if bolt.canvas and controls:pressed('capture') then
         love.filesystem.remove('capture.png')
         bolt.canvas:newImageData():encode('png', 'capture.png')

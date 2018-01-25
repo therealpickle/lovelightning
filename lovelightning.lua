@@ -46,6 +46,8 @@ function LoveLightning:initialize(r,g,b,power)
 
     self.max_fork_depth = 3
     self.max_forks = 10
+    self.max_iterations = 11
+    self.min_iterations = 4
 end
 
 function LoveLightning:setPrimaryTarget(targ)
@@ -183,7 +185,8 @@ function LoveLightning:generate( fork_hit_handler )
 
     self.distance = (vtarget-vsource):len()
     local max_jitter = self.distance*0.5*self.jitter_factor
-    local iterations = math.min(11, math.max(6,math.floor(self.distance/50)))
+    local iterations = math.min(self.max_iterations, math.max(
+        self.min_iterations,math.floor(self.distance/50)))
 
     for i = 1, iterations, 1 do
         self.vertices = self:_add_jitter(self.vertices, max_jitter, 1, 
@@ -220,7 +223,7 @@ local function draw_path(vertex_list, color, alpha, width)
 
     for _, v in ipairs(vertex_list) do
         if v.is_fork_root then
-            draw_path(v.fork, color, alpha*0.5, width-1)
+            draw_path(v.fork, color, alpha*0.75, width*.75)
         end
     end
 end
