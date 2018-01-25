@@ -173,6 +173,8 @@ function love.update(dt)
             end)
 
         create_time = love.timer.getTime() - st
+
+        print("Bolt vertice count: "..bolt:verticeCount())
     end
 
     bolt:update(dt)

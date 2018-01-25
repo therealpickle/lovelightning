@@ -174,6 +174,21 @@ function LoveLightning:_add_jitter(vertices, max_offset, level, targets, target_
     return newpath
 end
 
+local function countIt(path)
+    local count = 0
+    for _, v in ipairs(path) do
+        count = count + 1
+        if v.is_fork_root then
+            count = count + countIt(v.fork)
+        end
+    end
+    return count
+end
+
+function LoveLightning:verticeCount()
+    return countIt(self.vertices)
+end
+
 function LoveLightning:generate( fork_hit_handler )
 
     self.num_forks = 0
