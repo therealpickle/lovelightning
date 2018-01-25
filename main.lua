@@ -1,6 +1,11 @@
 LoveLightning = require "lovelightning"
 baton = require "lib/baton/baton"
 class = require "lib/middleclass/middleclass"
+profi = require "profi"
+
+-------------------------------------------------------------------------------
+local DEBUG = true
+local run_profiler = false
 
 -------------------------------------------------------------------------------
 local controls = baton.new({
@@ -46,6 +51,7 @@ end
 local DEFAULT_MARGIN = 20
 local margin = DEFAULT_MARGIN
 
+
 local source_targ = Target:new({x=margin, y=love.graphics.getHeight()/2})
 source_targ:setColor(0,255,0)
 
@@ -67,7 +73,15 @@ local function generate_sec_targs()
     end
 end
 
-function love.load()
+function love.load(args)
+    print(unpack(args))
+
+    for _, arg in ipairs(args) do
+        if arg == '--profiler' then
+            run_profiler = true
+        end
+    end
+
     bolt = LoveLightning:new(255,255,255)
     bolt:setSource(source_targ)
     bolt:setPrimaryTarget(prim_targ)
@@ -77,10 +91,17 @@ function love.load()
         local ty = margin+math.random()*(love.graphics.getHeight()-margin*2)
         table.insert(sec_targs,Target:new({x=tx,y=ty}))
     end
+
+    if run_profiler then
+        profi:start()
+    end
 end
 
 function love.quit()
-
+    if run_profiler then
+        profi:stop()
+        profi:writeReport('profile.txt')
+    end
 end 
 
 function love.resize(w, h)
