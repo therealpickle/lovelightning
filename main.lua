@@ -12,7 +12,9 @@ local controls = baton.new({
         increase = {'key:kp+','key:+'},
         decrease = {'key:kp-','key:-'},
         capture = {'key:v'},
-        toggle = {'key:b'},
+        border_toggle = {'key:b'},
+        continuous_toggle = {'key:c'},
+        quit = {'key:q'},
     }
 })
 
@@ -54,6 +56,8 @@ prim_targ:setColor(255,0,0)
 local sec_targs = {}
 local n_sec_targs = 0
 
+local continuous = false
+
 local function generate_sec_targs()
     sec_targs = {}
     for _ = 1 , n_sec_targs do
@@ -74,6 +78,10 @@ function love.load()
         table.insert(sec_targs,Target:new({x=tx,y=ty}))
     end
 end
+
+function love.quit()
+
+end 
 
 function love.resize(w, h)
 
@@ -100,7 +108,15 @@ function love.update(dt)
     
     controls:update()
     
-    if controls:pressed('toggle') then
+    if controls:pressed('quit') then
+        love.event.push('quit')
+    end
+
+    if controls:pressed('continuous_toggle') then
+        continuous = not continuous
+    end
+
+    if controls:pressed('border_toggle') then
         if margin == DEFAULT_MARGIN then 
             margin = 0 
         else 
@@ -122,13 +138,14 @@ function love.update(dt)
         force_gen_sec_targs = true
     end        
 
-    if controls:pressed('fire') or force_gen_sec_targs then
+    if controls:pressed('fire') or force_gen_sec_targs or continuous then
         -- reset the color on the targets
         for _, t in ipairs(sec_targs) do
             t:setColor(unpack(SEC_TARG_DEF_COLOR))
         end
 
         local st = love.timer.getTime()
+
         bolt:setForkTargets(sec_targs)
         bolt:generate(function(t,level)
                 t:setColor(255,255,25,255)
@@ -153,15 +170,20 @@ function love.draw()
     end
     bolt:draw()
 
+    love.graphics.setColor(50, 200, 100, 200)
     love.graphics.print(
         "V: Capture Image || B: Toggle Border",
-        20, love.graphics.getHeight()-60)
+        20, love.graphics.getHeight()-80)
     love.graphics.print(
         "plus: Increase Targets || minus: Decrease Targets",
-        20, love.graphics.getHeight()-40)
+        20, love.graphics.getHeight()-60)
     love.graphics.print(
         "Space: Generate Lightning || L Shift: Generate Targets",
+        20, love.graphics.getHeight()-40)
+    love.graphics.print(
+        "Q: Quit",
         20, love.graphics.getHeight()-20)
+
     -- debug
     love.graphics.setFont(love.graphics.newFont())
     love.graphics.setColor(50, 200, 100, 200)
