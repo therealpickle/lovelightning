@@ -98,7 +98,7 @@ function LoveLightning:_add_jitter(vertices, max_offset, level, targets, target_
         
         table.insert(newpath, vertices[j])
         
-        if (vep-vsp):len() > self.min_seg_len then
+        if (vep-vsp):len() > 2*self.min_seg_len then
             
             local vmp = (vep+vsp)/2     -- mid point
             local vseg = vep-vsp        -- vector from start to end point    
