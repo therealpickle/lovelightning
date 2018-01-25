@@ -288,7 +288,9 @@ function LoveLightning:draw()
 
 
             love.graphics.setCanvas(restore_canvas)
-        else
+        end
+        
+        if self.canvas then
             love.graphics.setBlendMode("alpha", "premultiplied")
             love.graphics.draw(self.canvas,0,0)
             love.graphics.setBlendMode(restore_mode)
