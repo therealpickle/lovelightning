@@ -181,7 +181,7 @@ function love.draw()
         "Space: Generate Lightning || L Shift: Generate Targets",
         20, love.graphics.getHeight()-40)
     love.graphics.print(
-        "Q: Quit",
+        "Q: Quit || C: Continuous",
         20, love.graphics.getHeight()-20)
 
     -- debug
