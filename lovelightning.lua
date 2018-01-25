@@ -40,9 +40,12 @@ LoveLightning = class("LoveLightning")
 function LoveLightning:initialize(r,g,b,power)
     if power ~= nil then self.power = power else self.power = 1.0 end
     self.jitter_factor = 0.5
-    self.fork_chance = 0.75
+    self.fork_chance = 0.5
     self.max_fork_angle = math.pi/4
     self.color = {['r']=r,['g']=g,['b']=b}
+
+    self.max_fork_depth = 3
+    self.max_forks = 10
 end
 
 function LoveLightning:setPrimaryTarget(targ)
@@ -81,6 +84,12 @@ end
 function LoveLightning:_add_jitter(vertices, max_offset, level, targets, target_hit_handler)
     local newpath = {} -- new list of vertices after jitter is added
 
+    print(#vertices, level)
+
+    if level > self.max_fork_depth then
+        return vertices
+    end
+
     for j = 1, #vertices-1, 1 do
         
         local vsp = vertices[j].v   -- start point
@@ -103,7 +112,9 @@ function LoveLightning:_add_jitter(vertices, max_offset, level, targets, target_
         local mp_vertex = LightningVertex(vnewmp)
 
         -- chance to create a fork from the midpoint
-        if math.random() < self.fork_chance/(level^2) then
+        if not vertices[j].is_fork_root and self.num_forks < self.max_forks and 
+                math.random() < self.fork_chance/(level^2)  then
+            self.num_forks = self.num_forks + 1
             local selected_target = nil
             local index = nil
             local vt = nil
@@ -117,8 +128,8 @@ function LoveLightning:_add_jitter(vertices, max_offset, level, targets, target_
                     vt = vector(t.x, t.y)
 
                     -- if the target is in the fork firing arc and is in range
-                    if vfork:angleTo(vt) < self.max_fork_angle and 
-                            vmp:dist(vt) < vfork:len()*2 then
+                    if vfork:angleTo(vt) < self.max_fork_angle/2 and 
+                            vmp:dist(vt) < vfork:len() then
 
                         selected_target = t
                         index = i
@@ -148,8 +159,6 @@ function LoveLightning:_add_jitter(vertices, max_offset, level, targets, target_
             vertices[j].fork = self:_add_jitter(vertices[j].fork, max_offset, level+1)
         end
 
-
-
     end
 
     -- create the new path of LighningVertex's from start to newmidpoint to end
@@ -161,6 +170,7 @@ end
 
 function LoveLightning:generate( fork_hit_handler )
 
+    self.num_forks = 0
     self.fork_hit_handler = fork_hit_handler
 
     local vsource = vector(self.source.x, self.source.y)
