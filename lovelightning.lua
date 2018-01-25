@@ -25,22 +25,12 @@ function LightningVertex:createFork(fork_vec)
 end
 
 -------------------------------------------------------------------------------
-LightningSegment = class("LightningSegment")
-
-function LightningSegment:initialize(start, stop, level)
-    self.level = level or 1
-    self.start = start
-    self.stop = stop
-    self.points = {self.start, self.stop}
-end
-
--------------------------------------------------------------------------------
 LoveLightning = class("LoveLightning")
 
 function LoveLightning:initialize(r,g,b,power)
     if power ~= nil then self.power = power else self.power = 1.0 end
     self.jitter_factor = 0.5
-    self.fork_chance = 0.5
+    self.fork_chance = 0.75
     self.max_fork_angle = math.pi/4
     self.color = {['r']=r,['g']=g,['b']=b}
 
