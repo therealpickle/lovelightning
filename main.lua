@@ -14,7 +14,7 @@ local controls = baton.new({
         secondary = {'mouse:2'},
         fire = {'key:space'},
         generate = {'key:lshift'},
-        increase = {'key:kp+','key:+'},
+        increase = {'key:kp+','key:+','key:='},
         decrease = {'key:kp-','key:-'},
         capture = {'key:v'},
         border_toggle = {'key:b'},

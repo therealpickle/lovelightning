@@ -34,8 +34,8 @@ function LoveLightning:initialize(r,g,b,power)
     self.max_fork_angle = math.pi/4
     self.color = {['r']=r,['g']=g,['b']=b}
 
-    self.max_fork_depth = 1000000
-    self.max_forks = 1000000
+    self.max_fork_depth = 1000000 -- can probably get removed eventually
+    self.max_forks = 1000000 -- same
     self.max_iterations = 11
     self.min_iterations = 4
     self.min_seg_len = 3
