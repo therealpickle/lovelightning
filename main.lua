@@ -174,7 +174,10 @@ function love.update(dt)
 
         create_time = love.timer.getTime() - st
 
-        print("Bolt vertice count: "..bolt:verticeCount())
+        print("")
+        print("bolt interations:   "..bolt.last_iteration_count)
+        print("bolt vertice count: "..bolt:verticeCount())
+        print("bolt generate time: "..create_time*1000)
     end
 
     bolt:update(dt)

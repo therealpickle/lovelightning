@@ -7,10 +7,7 @@ vector = require 'lib/hump.vector'
 cpml = require 'lib/cpml'
 fx = require 'fx'
 
--- for benchmarking/debugging
-local vert_iter = 0
-
--------------------------------------------------------------------------------
+------------------------------------------------------------------------------
 local LightningVertex = class('LightningVertex')
 
 function LightningVertex:initialize(vec)
@@ -47,10 +44,11 @@ function LoveLightning:initialize(r,g,b,power)
     self.max_fork_angle = math.pi/4
     self.color = {['r']=r,['g']=g,['b']=b}
 
-    self.max_fork_depth = 3
-    self.max_forks = 10
+    self.max_fork_depth = 1000000
+    self.max_forks = 1000000
     self.max_iterations = 11
     self.min_iterations = 4
+    self.min_seg_len = 3
 end
 
 function LoveLightning:setPrimaryTarget(targ)
@@ -89,76 +87,78 @@ end
 function LoveLightning:_add_jitter(vertices, max_offset, level, targets, target_hit_handler)
     local newpath = {} -- new list of vertices after jitter is added
 
-    -- print(#vertices, level)
-
     if level > self.max_fork_depth then
         return vertices
     end
 
     for j = 1, #vertices-1, 1 do
-        vert_iter = vert_iter + 1
 
         local vsp = vertices[j].v   -- start point
         local vep = vertices[j+1].v -- end point
-        local vmp = (vep+vsp)/2     -- mid point
-        local vseg = vep-vsp        -- vector from start to end point    
         
-        -- offset the midpoint along a line perpendicular to the line segment
-        -- from start to end a random ammount from -max_offset to max_offset
-        local vnewmp = vmp + vseg:perpendicular():normalized()*max_offset*(
-            math.random()*2-1)
-
-        -- vectors of the new line segments
-        local vseg1 = vnewmp-vsp
-        local vseg2 = vep-vnewmp
-
-        -- add the starting point to the new path
         table.insert(newpath, vertices[j])
         
-        local mp_vertex = LightningVertex(vnewmp)
-
-        -- chance to create a fork from the midpoint
-        if not vertices[j].is_fork_root and self.num_forks < self.max_forks and 
-                math.random() < self.fork_chance/(level^2)  then
-            self.num_forks = self.num_forks + 1
-            local selected_target = nil
-            local index = nil
-            local vt = nil
-
-            -- generate the fork from the second segment buy randomly rotating
-            local vfork = vseg2:rotated((math.random()-0.5)*2*self.max_fork_angle)
+        if (vep-vsp):len() > self.min_seg_len then
             
-            -- can that fork hit a potential target?
-            if targets then
-                for i, t in ipairs(targets) do
-                    vt = vector(t.x, t.y)
+            local vmp = (vep+vsp)/2     -- mid point
+            local vseg = vep-vsp        -- vector from start to end point    
+            
+            -- offset the midpoint along a line perpendicular to the line segment
+            -- from start to end a random ammount from -max_offset to max_offset
+            local vnewmp = vmp + vseg:perpendicular():normalized()*max_offset*(
+                math.random()*2-1)
 
-                    -- if the target is in the fork firing arc and is in range
-                    if vfork:angleTo(vt) < self.max_fork_angle/2 and 
-                            vmp:dist(vt) < vfork:len() then
+            -- vectors of the new line segments
+            local vseg1 = vnewmp-vsp
+            local vseg2 = vep-vnewmp
 
-                        selected_target = t
-                        index = i
-                        break
+            -- add the starting point to the new path
+            
+            local mp_vertex = LightningVertex(vnewmp)
+
+            -- chance to create a fork from the midpoint
+            if not vertices[j].is_fork_root and self.num_forks < self.max_forks and 
+                    math.random() < self.fork_chance/(level^2)  then
+                self.num_forks = self.num_forks + 1
+                local selected_target = nil
+                local index = nil
+                local vt = nil
+
+                -- generate the fork from the second segment buy randomly rotating
+                local vfork = vseg2:rotated((math.random()-0.5)*2*self.max_fork_angle)
+                
+                -- can that fork hit a potential target?
+                if targets then
+                    for i, t in ipairs(targets) do
+                        vt = vector(t.x, t.y)
+
+                        -- if the target is in the fork firing arc and is in range
+                        if vfork:angleTo(vt) < self.max_fork_angle/2 and 
+                                vmp:dist(vt) < vfork:len() then
+
+                            selected_target = t
+                            index = i
+                            break
+                        end
                     end
                 end
-            end
-            
-            if selected_target then
-                table.remove(targets, index)
-                mp_vertex:createFork(vt-vnewmp)
-            
-                -- call the handler if we hit something
-                target_hit_handler(selected_target, level)
-            else
-                mp_vertex:createFork(vfork)
-            end
-            
+                
+                if selected_target then
+                    table.remove(targets, index)
+                    mp_vertex:createFork(vt-vnewmp)
+                
+                    -- call the handler if we hit something
+                    target_hit_handler(selected_target, level)
+                else
+                    mp_vertex:createFork(vfork)
+                end
+                
 
+            end
+
+            -- add the new midpoint to the new path
+            table.insert(newpath, mp_vertex)
         end
-
-        -- add the new midpoint to the new path
-        table.insert(newpath, mp_vertex)
 
         -- if the start point is a fork, then add jitter to the fork
         if vertices[j].is_fork_root == true then
@@ -215,10 +215,8 @@ function LoveLightning:generate( fork_hit_handler )
         max_jitter = max_jitter*0.5
     end
 
-    self.canvas = nil
-
-    print("Iter: "..iterations.." verts: "..vert_iter)
-    vert_iter = 0
+    self.canvas = nil -- will trigger a redraw
+    self.last_iteration_count = iterations -- for debugging
 end
 
 function LoveLightning:clear()
@@ -270,38 +268,6 @@ local function draw_segment(lightning_segment, color)
     love.graphics.line(points_of(lightning_segment))
     love.graphics.setColor(255,255,255)    
 end
-
--- function LoveLightning:draw()
---     local restore_mode = love.graphics.getBlendMode()
---     local restore_canvas = love.graphics.getCanvas()
-    
---     if self.segments then 
---         if not self.canvas then
-    
---             self.canvas = love.graphics.newCanvas()
---             love.graphics.setCanvas(self.canvas)
-
---             -- draw_path(self.vertices, self.color, 32*self.power, 17*self.power)
---             -- draw_path(self.vertices, self.color, 64*self.power, 7*self.power)
---             -- draw_path(self.vertices, self.color, 128*self.power, 5*self.power)
-
---             -- canvas = fx.blur(canvas)
-
---             -- draw_path(self.vertices, self.color, 255*self.power, 2*self.power)
-
---             for _, seg in ipairs(self.segments) do
---                 print("!!")
---                 draw_segment(seg, self.color)
---             end
-
---             love.graphics.setCanvas(restore_canvas)
---         else
---             love.graphics.setBlendMode("alpha", "premultiplied")
---             love.graphics.draw(self.canvas,0,0)
---             love.graphics.setBlendMode(restore_mode)
---         end
---     end
--- end
 
 function LoveLightning:draw()
     local restore_mode = love.graphics.getBlendMode()
