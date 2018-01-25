@@ -128,7 +128,6 @@ function LoveLightning:_add_jitter(vertices, max_offset, level, targets, target_
             end
             
             if selected_target then
-                print("target hit", selected_target.x, selected_target.y)
                 table.remove(targets, index)
                 mp_vertex:createFork(vt-vnewmp)
             
@@ -289,7 +288,7 @@ function LoveLightning:draw()
 
             love.graphics.setCanvas(restore_canvas)
         end
-        
+
         if self.canvas then
             love.graphics.setBlendMode("alpha", "premultiplied")
             love.graphics.draw(self.canvas,0,0)
