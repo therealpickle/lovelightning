@@ -166,9 +166,11 @@ function LoveLightning:_add_midpoint_displacement(A, B, max_offset)
     end
 end
 
--- will create a fork at vertex by rotating a vector from vertex to it's next
--- a random ammount
-function LoveLightning:_fork(at_vertex, targets, target_hit_handler)
+-- takes the segment defined from A to A.next, and rotates it a random
+-- amount to create a fork from A. When forking, if targets are given
+-- a target will be selected and hit, in this case, the fork segment will go 
+-- from A to the target
+function LoveLightning:_fork(A, targets, target_hit_handler)
 
 end
 
