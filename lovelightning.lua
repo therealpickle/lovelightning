@@ -100,7 +100,7 @@ LoveLightning = class("LoveLightning")
 
 function LoveLightning:initialize(r,g,b,power)
     if power ~= nil then self.power = power else self.power = 1.0 end
-    self.jitter_factor = 0.5
+    self.displacement_factor = 0.5
     self.fork_chance = 0.75
     self.max_fork_angle = math.pi/4
     self.color = {['r']=r,['g']=g,['b']=b}
@@ -146,7 +146,7 @@ function LoveLightning:setForkTargets(targets)
 end
 
 -- adds an offset midpoint between 
-function LoveLightning:_add_midpoint(A, B, max_offset)
+function LoveLightning:_add_midpoint_displacement(A, B, max_offset)
     assert(B.last == A)
     -- need to check and see if B is a fork of A
     if A.fork == B.last then local is_fork = true else local is_fork = false end
@@ -295,7 +295,7 @@ function LoveLightning:generate( fork_hit_handler )
     self:clear()
 
     self.distance = (self.target_vertex.vector-self.source_vertex.vector):len()
-    local max_jitter = self.distance*0.5*self.jitter_factor
+    local max_displacement = self.distance*0.5*self.displacement_factor
     local iterations = math.min(self.max_iterations, math.max(
         self.min_iterations,math.floor(self.distance/50)))
 
@@ -305,12 +305,12 @@ function LoveLightning:generate( fork_hit_handler )
         local vrtx = self.source_vertex
         while vrtx.next do
             vrtx = vrtx.next
-            self:_add_midpoint(vrtx.last, vrtx, max_jitter)
+            self:_add_midpoint_displacement(vrtx.last, vrtx, max_displacement)
         end
-        -- self.vertices = self:_add_jitter(self.vertices, max_jitter, 1, 
+        -- self.vertices = self:_add_jitter(self.vertices, max_displacement, 1, 
         --     self.fork_targets, fork_hit_handler)
 
-        max_jitter = max_jitter*0.5
+        max_displacement = max_displacement*0.5
     end
 
     self.canvas = nil -- will trigger a redraw
