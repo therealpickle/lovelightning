@@ -91,6 +91,7 @@ function love.load(args)
         local ty = margin+math.random()*(love.graphics.getHeight()-margin*2)
         table.insert(sec_targs,Target:new({x=tx,y=ty}))
     end
+    print("bolt vertex pool size: "..#bolt.vpool)
 
     if run_profiler then
         profi:start()
@@ -175,9 +176,10 @@ function love.update(dt)
         create_time = love.timer.getTime() - st
 
         print("")
-        print("bolt interations:   "..bolt.last_iteration_count)
-        print("bolt vertice count: "..bolt:verticeCount())
-        print("bolt generate time: "..create_time*1000)
+        print("bolt iterations:       "..bolt.last_iteration_count)
+        print("bolt vertice count:    "..bolt:verticeCount())
+        print("bolt generate time:    "..create_time*1000)
+        print("bolt vertex pool size: "..#bolt.vpool)
     end
 
     bolt:update(dt)
