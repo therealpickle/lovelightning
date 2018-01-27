@@ -60,7 +60,7 @@ local prim_targ = Target:new({x=love.graphics.getWidth()-margin,
 prim_targ:setColor(255,0,0)
 
 local sec_targs = {}
-local n_sec_targs = 0
+local n_sec_targs = 20
 
 local continuous = false
 
