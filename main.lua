@@ -27,7 +27,11 @@ local controls = baton.new({
 local Target = class("Target")
 local SEC_TARG_DEF_COLOR = {255,50,50,127}
 
+local target_id_counter = 0
+
 function Target:initialize(vector)
+    target_id_counter = target_id_counter + 1
+    self.id = target_id_counter
     self.x = vector.x
     self.y = vector.y
     self.r, self.g, self.b, self.a = unpack(SEC_TARG_DEF_COLOR)
@@ -60,7 +64,7 @@ local prim_targ = Target:new({x=love.graphics.getWidth()-margin,
 prim_targ:setColor(255,0,0)
 
 local sec_targs = {}
-local n_sec_targs = 0
+local n_sec_targs = 20
 
 local continuous = false
 
@@ -171,6 +175,7 @@ function love.update(dt)
         bolt:setForkTargets(sec_targs)
         bolt:generate(function(t,level)
                 t:setColor(255,255,25,255)
+                -- print("Target "..t.id.." hit!")
             end)
 
         create_time = love.timer.getTime() - st

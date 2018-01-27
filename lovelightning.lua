@@ -11,8 +11,12 @@ fx = require 'fx'
 
 local vertex = {}
 
-function vertex.new() 
-    return {vector=vector.new(0,0), last=nil, next=nil, fork=nil}
+local vertex_id_counter = 0
+
+function vertex.new()
+    vertex_id_counter = vertex_id_counter+1
+    return {vector=vector.new(0,0), last=nil, next=nil, fork=nil, 
+        id=vertex_id_counter}
 end
 
 function vertex.break_links(vrtx)
@@ -43,8 +47,15 @@ function vertex.insert_after(A, X)
     X.last = A
 end
 
-function vertex.insert_before(before_this, this)
-    -- body
+function vertex.insert_before(B, X)
+    X.last = B.last
+    if X.last.next == B then
+        X.last.next = X
+    elseif X.last.fork == B then
+        X.last.fork = X
+    end
+    X.next = B
+    B.last = X
 end
 
 vertex.pool = {}
@@ -76,23 +87,6 @@ function vertex.pool.put(to_pool, this)
         this.last.fork = nil
     end
     to_pool[#to_pool+1] = vertex.clear(this)
-end
-
-------------------------------------------------------------------------------
-local LightningVertex = class('LightningVertex')
-
-function LightningVertex:initialize(vec)
-    self.v = vec
-    self.is_fork_root = false
-    self.fork = nil
-end
-
-function LightningVertex:createFork(fork_vec)
-    self.fork = {
-        LightningVertex:new(self.v),
-        LightningVertex:new(self.v+fork_vec)
-    }
-    self.is_fork_root = true
 end
 
 -------------------------------------------------------------------------------
@@ -145,34 +139,76 @@ function LoveLightning:setForkTargets(targets)
     end
 end
 
--- adds an offset midpoint between 
-function LoveLightning:_add_midpoint_displacement(A, B, max_offset)
+-- Creates a new vertex that's a displaced midpoint between A and B
+function LoveLightning:_displace_midpoint(A, B, max_offset)
     assert(B.last == A)
-    -- need to check and see if B is a fork of A
-    if A.fork == B.last then local is_fork = true else local is_fork = false end
 
-        
-    if (B.vector-A.vector):len() > 2*self.min_seg_len then    
-        M = vertex.pool.get(self.vpool)
+    -- check if B is a fork of A
+    local is_fork = false
+    if A.fork == B then is_fork = true end
 
-        -- offset the midpoint along a line perpendicular to the line segment
-        -- from start to end a random ammount from -max_offset to max_offset
-        M.vector = (B.vector+A.vector)/2 + 
-            (B.vector-A.vector):perpendicular():normalized() *
-            max_offset*(math.random()*2-1)
+    M = vertex.pool.get(self.vpool)
 
+    -- offset the midpoint along a line perpendicular to the line segment
+    -- from start to end a random ammount from -max_offset to max_offset
+    M.vector = (B.vector+A.vector)/2 + 
+        (B.vector-A.vector):perpendicular():normalized() *
+        max_offset*(math.random()*2-1)
+    
+    if is_fork then
+        vertex.insert_before(B, M)
+    else
         vertex.insert_after(A, M)
-
     end
+
+    return M
 end
 
 -- takes the segment defined from A to A.next, and rotates it a random
 -- amount to create a fork from A. When forking, if targets are given
 -- a target will be selected and hit, in this case, the fork segment will go 
 -- from A to the target
-function LoveLightning:_fork(A, targets, target_hit_handler)
+function LoveLightning:_fork(A, targets, target_hit_handler, level)
+    local selected_target = nil
+    local index = nil
+    
+    local F = vertex.pool.get(self.vpool)
 
+    -- generate the fork from the second segment buy randomly rotating
+    F.vector.x = A.next.vector.x-A.vector.x
+    F.vector.y = A.next.vector.y-A.vector.y
+    F.vector:rotateInplace((math.random()-0.5)*2*self.max_fork_angle)
+    
+    -- can that fork hit a potential target?
+    if targets then
+        for i, t in ipairs(targets) do
+            local vt = vector(t.x, t.y)
+
+            -- if the target is in the fork firing arc and is in range,
+            -- set the fork vector to the target vector
+            if F.vector:angleTo(vt) < self.max_fork_angle/2 and 
+                    A.vector:dist(vt) < F.vector:len() then
+                F.vector.x = vt.x
+                F.vector.y = vt.y
+                selected_target = t
+                index = i
+                break
+            end
+        end
+    end
+    
+    if selected_target then
+        table.remove(targets, i)
+        target_hit_handler(selected_target, level)
+    else
+        F.vector = A.vector + F.vector
+    end
+    
+    vertex.insert_fork(A, F)
+    self.num_forks = self.num_forks + 1
+    return F
 end
+
 
 -- root : root vertex to start with
 -- max_offset : maximum distance to offset the midpoint
@@ -181,99 +217,48 @@ end
 --      an x and a y)
 -- target_hit_handler : called when a target is selected for a fork to hit
 --      in the form of function(target_hit, level_of_fork_that_hit)
-function LoveLightning:_add_jitter(root, max_offset, level, targets, target_hit_handler)
-    local newpath = {} -- new list of vertices after jitter is added
+function LoveLightning:_add_displacement(root, max_displacement, level, targets, target_hit_handler)
+    if level > self.max_fork_depth then return end
 
-    if level > self.max_fork_depth then
-        return vertices
-    end
+    -- if the root is the start of the fork, add a displaced midpoint between
+    -- the last vertext and root
+    if root.last and root.last.fork == root then
+        self:_displace_midpoint(root.last, root, max_displacement)
+    end 
 
-    for j = 1, #vertices-1, 1 do
+    local vrtx = root
+    while vrtx.next do
+        local A = vrtx   
+        local B = vrtx.next 
+        local vAB = B.vector-A.vector
 
-        local vsp = vertices[j].v   -- start point
-        local vep = vertices[j+1].v -- end point
-        
-        table.insert(newpath, vertices[j])
-        
-        if (vep-vsp):len() > 2*self.min_seg_len then
+        if vAB:len() > 2*self.min_seg_len then
             
-            local vmp = (vep+vsp)/2     -- mid point
-            local vseg = vep-vsp        -- vector from start to end point    
-            
-            -- offset the midpoint along a line perpendicular to the line segment
-            -- from start to end a random ammount from -max_offset to max_offset
-            local vnewmp = vmp + vseg:perpendicular():normalized()*max_offset*(
-                math.random()*2-1)
-
-            -- vectors of the new line segments
-            local vseg1 = vnewmp-vsp
-            local vseg2 = vep-vnewmp
-
-            -- add the starting point to the new path
-            
-            local mp_vertex = LightningVertex(vnewmp)
+            local M = self:_displace_midpoint(A, B, max_displacement)
 
             -- chance to create a fork from the midpoint
-            if not vertices[j].is_fork_root and self.num_forks < self.max_forks and 
-                    math.random() < self.fork_chance/(level^2)  then
-                self.num_forks = self.num_forks + 1
-                local selected_target = nil
-                local index = nil
-                local vt = nil
-
-                -- generate the fork from the second segment buy randomly rotating
-                local vfork = vseg2:rotated((math.random()-0.5)*2*self.max_fork_angle)
+            if not A.fork and self.num_forks < self.max_forks and 
+                math.random() < self.fork_chance/(level^2)  then
                 
-                -- can that fork hit a potential target?
-                if targets then
-                    for i, t in ipairs(targets) do
-                        vt = vector(t.x, t.y)
-
-                        -- if the target is in the fork firing arc and is in range
-                        if vfork:angleTo(vt) < self.max_fork_angle/2 and 
-                                vmp:dist(vt) < vfork:len() then
-
-                            selected_target = t
-                            index = i
-                            break
-                        end
-                    end
-                end
-                
-                if selected_target then
-                    table.remove(targets, index)
-                    mp_vertex:createFork(vt-vnewmp)
-                
-                    -- call the handler if we hit something
-                    target_hit_handler(selected_target, level)
-                else
-                    mp_vertex:createFork(vfork)
-                end
-                
-
+                F = self:_fork(M, targets, target_hit_handler, level+1)                
             end
-
-            -- add the new midpoint to the new path
-            table.insert(newpath, mp_vertex)
         end
 
-        -- if the start point is a fork, then add jitter to the fork
-        if vertices[j].is_fork_root == true then
-            vertices[j].fork = self:_add_jitter(vertices[j].fork, max_offset, level+1)
+        -- add displacement to the fork
+        if vrtx.fork then
+            self:_add_displacement(vrtx.fork, max_displacement, level+1, 
+                targets, target_hit_handler)
         end
 
+        vrtx = B
     end
-
-    -- create the new path of LighningVertex's from start to newmidpoint to end
-    table.insert(newpath, mp_vertex)
-    table.insert(newpath, vertices[#vertices])
-    
-    return newpath
 end
 
 local function countIt(vrtx)
     local count = 1
     
+    -- print(vrtx.last, vrtx, vrtx.next, vrtx.fork)
+
     if vrtx.next then
         count = count + countIt(vrtx.next)
     end
@@ -303,15 +288,8 @@ function LoveLightning:generate( fork_hit_handler )
 
     local iters = 0
     for i = 1, iterations do
-        iters = iters+1
-        local vrtx = self.source_vertex
-        while vrtx.next do
-            vrtx = vrtx.next
-            self:_add_midpoint_displacement(vrtx.last, vrtx, max_displacement)
-        end
-        -- self.vertices = self:_add_jitter(self.vertices, max_displacement, 1, 
-        --     self.fork_targets, fork_hit_handler)
-
+        self:_add_displacement(self.source_vertex, max_displacement, 1, 
+            self.fork_targets, fork_hit_handler)
         max_displacement = max_displacement*0.5
     end
 
@@ -372,26 +350,6 @@ local function draw_path(start_vertex, color, alpha, width)
         vrtx = vrtx.next
     end
         
-end
-
-local function draw_segment(lightning_segment, color)
-    local function points_of(lsegment)
-        local p = {}
-        for _, point in ipairs(lsegment.points) do
-            table.insert(p, point.x)
-            table.insert(p, point.y)
-        end
-        return p 
-    end
-
-    local alpha = 255 / lightning_segment.level
-    local width = 2 / lightning_segment.level
-
-    love.graphics.setLineJoin('miter')
-    love.graphics.setLineWidth(width)
-    love.graphics.setColor(color['r'], color['g'], color['b'], alpha)
-    love.graphics.line(points_of(lightning_segment))
-    love.graphics.setColor(255,255,255)    
 end
 
 function LoveLightning:draw()
