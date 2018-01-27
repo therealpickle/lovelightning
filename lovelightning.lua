@@ -190,15 +190,17 @@ function LoveLightning:_fork(A, targets, target_hit_handler, level)
                     A.vector:dist(vt) < F.vector:len() then
                 F.vector.x = vt.x
                 F.vector.y = vt.y
+                
                 selected_target = t
                 index = i
+                
+                table.remove(targets, i)
                 break
             end
         end
     end
     
     if selected_target then
-        table.remove(targets, i)
         target_hit_handler(selected_target, level)
     else
         F.vector = A.vector + F.vector
