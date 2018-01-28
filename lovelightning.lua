@@ -179,8 +179,6 @@ function LoveLightning:_fork(A, targets, target_hit_handler, level)
     -- can that fork hit a potential target?
     if targets then
         for i, t in ipairs(targets) do
-            -- local vt = vector(t.x, t.y)
-
             -- if the target is in the fork firing arc and is in range,
             -- set the fork vector to the target vector
             if vec.angleTo(t.x, t.y, F.x, F.y) < self.max_fork_angle/2 and 
@@ -227,12 +225,10 @@ function LoveLightning:_add_displacement(root, max_displacement, level, targets,
     local vrtx = root
     while vrtx.next do
         local A = vrtx   
-        local B = vrtx.next 
-        local vABx = nil
-        local vABy = nil
-        vABx, vABy = vec.sub(B.x, B.y, A.x, A.y)
+        local B = vrtx.next
+        local ABx, ABy = vec.sub(B.x, B.y, A.x, A.y)
 
-        if vec.len(vABx, vABy) > 2*self.min_seg_len then
+        if vec.len(ABx, ABy) > 2*self.min_seg_len then
             
             local M = self:_displace_midpoint(A, B, max_displacement)
 
