@@ -3,8 +3,7 @@
 math = require 'math'
 
 class = require 'lib/middleclass/middleclass'
-vector = require 'lib/hump.vector'
-cpml = require 'lib/cpml'
+local vec = require 'lib/hump.vector-light'
 fx = require 'fx'
 
 
@@ -15,7 +14,7 @@ local vertex_id_counter = 0
 
 function vertex.new()
     vertex_id_counter = vertex_id_counter+1
-    return {vector=vector.new(0,0), last=nil, next=nil, fork=nil, 
+    return {x=0, y=0, last=nil, next=nil, fork=nil, 
         id=vertex_id_counter}
 end
 
@@ -27,8 +26,8 @@ function vertex.break_links(vrtx)
 end 
 
 function vertex.clear(vrtx)
-    vrtx.vector.x=0
-    vrtx.vector.y=0
+    vrtx.x=0
+    vrtx.y=0
     vertex.break_links(vrtx)
     return vrtx
 end
@@ -113,15 +112,15 @@ end
 
 function LoveLightning:setPrimaryTarget(targ)
     if targ.x ~= nil and targ.y ~= nil then
-        self.target_vertex.vector.x = targ.x
-        self.target_vertex.vector.y = targ.y
+        self.target_vertex.x = targ.x
+        self.target_vertex.y = targ.y
     end
 end
 
 function LoveLightning:setSource(source)
     if source.x ~= nil and source.y ~= nil then
-        self.source_vertex.vector.x = source.x
-        self.source_vertex.vector.y = source.y
+        self.source_vertex.x = source.x
+        self.source_vertex.y = source.y
     end
 end
 
@@ -144,16 +143,15 @@ function LoveLightning:_displace_midpoint(A, B, max_offset)
     assert(B.last == A)
 
     -- check if B is a fork of A
-    local is_fork = false
-    if A.fork == B then is_fork = true end
+    local is_fork = false; if A.fork == B then is_fork = true end
 
     M = vertex.pool.get(self.vpool)
 
     -- offset the midpoint along a line perpendicular to the line segment
     -- from start to end a random ammount from -max_offset to max_offset
-    M.vector = (B.vector+A.vector)/2 + 
-        (B.vector-A.vector):perpendicular():normalized() *
-        max_offset*(math.random()*2-1)
+    M.x, M.y = vec.normalize(vec.perpendicular(vec.sub(B.x, B.y, A.x, A.y)))
+    M.x, M.y = vec.mul(max_offset*(math.random()*2-1), M.x, M.y)
+    M.x, M.y = vec.add(M.x, M.y, vec.mul(0.5, vec.add(A.x, A.y, B.x, B.y)))
     
     if is_fork then
         vertex.insert_before(B, M)
@@ -175,21 +173,19 @@ function LoveLightning:_fork(A, targets, target_hit_handler, level)
     local F = vertex.pool.get(self.vpool)
 
     -- generate the fork from the second segment buy randomly rotating
-    F.vector.x = A.next.vector.x-A.vector.x
-    F.vector.y = A.next.vector.y-A.vector.y
-    F.vector:rotateInplace((math.random()-0.5)*2*self.max_fork_angle)
+    F.x, F.y = vec.sub(A.next.x, A.next.y, A.x, A.y)
+    F.x, F.y = vec.rotate((math.random()-0.5)*2*self.max_fork_angle, F.x, F.y)
     
     -- can that fork hit a potential target?
     if targets then
         for i, t in ipairs(targets) do
-            local vt = vector(t.x, t.y)
+            -- local vt = vector(t.x, t.y)
 
             -- if the target is in the fork firing arc and is in range,
             -- set the fork vector to the target vector
-            if F.vector:angleTo(vt) < self.max_fork_angle/2 and 
-                    A.vector:dist(vt) < F.vector:len() then
-                F.vector.x = vt.x
-                F.vector.y = vt.y
+            if vec.angleTo(t.x, t.y, F.x, F.y) < self.max_fork_angle/2 and 
+                    vec.dist(A.x, A.y, t.x, t.y) < vec.len(F.x, F.y) then
+                F.x, F.y  = t.x, t.y
                 
                 selected_target = t
                 index = i
@@ -203,7 +199,7 @@ function LoveLightning:_fork(A, targets, target_hit_handler, level)
     if selected_target then
         target_hit_handler(selected_target, level)
     else
-        F.vector = A.vector + F.vector
+        F.x, F.y = vec.add(A.x, A.y, F.x, F.y)
     end
     
     vertex.insert_fork(A, F)
@@ -232,9 +228,11 @@ function LoveLightning:_add_displacement(root, max_displacement, level, targets,
     while vrtx.next do
         local A = vrtx   
         local B = vrtx.next 
-        local vAB = B.vector-A.vector
+        local vABx = nil
+        local vABy = nil
+        vABx, vABy = vec.sub(B.x, B.y, A.x, A.y)
 
-        if vAB:len() > 2*self.min_seg_len then
+        if vec.len(vABx, vABy) > 2*self.min_seg_len then
             
             local M = self:_displace_midpoint(A, B, max_displacement)
 
@@ -283,12 +281,15 @@ function LoveLightning:generate( fork_hit_handler )
 
     self:clear()
 
-    self.distance = (self.target_vertex.vector-self.source_vertex.vector):len()
+    self.distance = vec.len(vec.sub(self.target_vertex.x, self.target_vertex.y,
+        self.source_vertex.x, self.source_vertex.y))
+
     local max_displacement = self.distance*0.5*self.displacement_factor
     local iterations = math.min(self.max_iterations, math.max(
         self.min_iterations,math.floor(self.distance/50)))
 
     local iters = 0
+    -- iterations = 1
     for i = 1, iterations do
         self:_add_displacement(self.source_vertex, max_displacement, 1, 
             self.fork_targets, fork_hit_handler)
@@ -322,18 +323,18 @@ local function draw_path(start_vertex, color, alpha, width)
     -- check to see if the start vertex is the start of a fork
     if start_vertex.last and start_vertex.last.fork == start_vertex then
         -- add the point from it's last vertex to start the fork
-        points[#points+1] = start_vertex.last.vector.x
-        points[#points+1] = start_vertex.last.vector.y
+        points[#points+1] = start_vertex.last.x
+        points[#points+1] = start_vertex.last.y
     end
 
     -- add the start vertex points
-    points[#points+1] = start_vertex.vector.x
-    points[#points+1] = start_vertex.vector.y
+    points[#points+1] = start_vertex.x
+    points[#points+1] = start_vertex.y
 
     local vrtx = start_vertex
     while vrtx.next do
-        points[#points+1] = vrtx.next.vector.x
-        points[#points+1] = vrtx.next.vector.y
+        points[#points+1] = vrtx.next.x
+        points[#points+1] = vrtx.next.y
         vrtx = vrtx.next
     end
 
