@@ -4,9 +4,6 @@ math = require 'math'
 
 class = require 'lib/middleclass/middleclass'
 local vec = require 'lib/hump.vector-light'
-fx = require 'fx'
-
-
 
 local vertex = {}
 
